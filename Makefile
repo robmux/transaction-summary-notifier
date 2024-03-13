@@ -1,9 +1,9 @@
 build:
-	go build -o bin/app
+	go build -o bin/notifier
 
 
 run: build
-	./bin/app
+	./bin/notifier
 
 test:
 	go test -v ./...

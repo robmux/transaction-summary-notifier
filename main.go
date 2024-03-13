@@ -1,19 +1,19 @@
 package main
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
 func main() {
-
 	r := gin.Default()
 
-	r.GET("/", func(c *gin.Context) {
-
+	r.GET("/ping", func(c *gin.Context) {
 		c.String(200, "Hello, Gin!")
-
 	})
 
-	r.Run()
-
+	err := r.Run(":3000")
+	if err != nil {
+		fmt.Println("error ", err.Error())
+	}
 }
