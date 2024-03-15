@@ -2,7 +2,10 @@ module github.com/robmux/transaction-summary-notifier
 
 go 1.22
 
-require github.com/gin-gonic/gin v1.9.1
+require (
+	github.com/gin-gonic/gin v1.9.1
+	github.com/shopspring/decimal v1.3.1
+)
 
 require (
 	github.com/bytedance/sonic v1.11.3 // indirect

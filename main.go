@@ -14,10 +14,29 @@ func main() {
 	})
 
 	r.POST("/load-transactions", func(c *gin.Context) {
-		c.String(200, "loading transactions")
+		csvFile, err := loadFile("input/user_1_transactions.csv")
+		if err != nil {
+			c.JSON(500, err)
+			return
+		}
+
+		columns := []string{
+			"TxID", "Date", "TransactionAmount",
+		}
+		transactions, err := readCSV(columns, csvFile)
+		if err != nil {
+			c.JSON(500, err.Error())
+			return
+		}
+
+		c.String(200, fmt.Sprintf("%+v", transactions))
 	})
 
 	r.POST("/notify", makeHTTPHandler(notifyUsers))
+
+	r.GET("transactions/summary", func(c *gin.Context) {
+		c.String(200, "getting summaries")
+	})
 
 	err := r.Run(":3000")
 	if err != nil {
