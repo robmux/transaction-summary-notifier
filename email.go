@@ -1,14 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"gopkg.in/gomail.v2"
 	"html/template"
 	"log"
-	"net/smtp"
-	"net/textproto"
 	"os"
 	"strings"
-
-	"github.com/jordan-wright/email"
 )
 
 type emailSender struct {
@@ -20,6 +18,7 @@ type Config struct {
 	password string
 
 	host       string
+	port       int
 	serverAddr string
 }
 
@@ -55,22 +54,22 @@ func (es *emailSender) SendEmailNotification() error {
 
 	// Set the HTML content of the email with the embedded logo
 
-	e := email.NewEmail()
-	e.Subject = "Account transactions summary"
-	e.From = "Robinson Muñoz Muñoz <testrobinson98@gmail.com>"
-	e.To = []string{"robinsonmu232@gmail.com"}
-	e.Headers = textproto.MIMEHeader{
-		"Content-Type": {"text/html", "charset=utf-8"},
+	message := gomail.NewMessage()
+	message.SetHeader("From", "mail_notification@stori.com")
+	message.SetHeader("To", "robinsonmu232@gmail.com")
+	message.SetHeader("Subject", "Account Transactions Summary")
+
+	message.SetBody("text/html", filledTemplateContent.String())
+	message.Embed("templates/resources/stori_logo.png")
+	message.Attach("input/user_1_transactions.csv")
+
+	// Connect to the SMTP server with TLS encryption
+	d := gomail.NewDialer(es.config.host, es.config.port, es.config.userMail, es.config.password)
+	if err := d.DialAndSend(message); err != nil {
+		log.Fatal(err)
 	}
 
-	e.HTML = []byte(filledTemplateContent.String())
-
-	err = e.Send(
-		es.config.serverAddr,
-		smtp.PlainAuth("", es.config.userMail, es.config.password, es.config.host))
-	if err != nil {
-		return err
-	}
+	fmt.Println("Email sent successfully")
 
 	return nil
 }

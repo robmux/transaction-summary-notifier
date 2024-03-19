@@ -119,6 +119,7 @@ func getMailConfig() Config {
 
 		host:       host,
 		serverAddr: serverAddr,
+		port:       587,
 	}
 }
 
