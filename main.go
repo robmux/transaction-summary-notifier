@@ -2,8 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -77,9 +81,44 @@ func main() {
 		c.JSON(200, fmt.Sprintf("Average debit \n %+v \n Average credit \n %+v", avg, avgCredit))
 	})
 
+	r.POST("/mails/notifications", func(c *gin.Context) {
+		config := getMailConfig()
+		em := NewSender(config)
+
+		err := em.SendEmail()
+		if err != nil {
+			c.JSON(500, err.Error())
+			return
+		}
+	})
+
 	err := r.Run(":3000")
 	if err != nil {
 		fmt.Println("error ", err.Error())
+	}
+}
+
+func getMailConfig() Config {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	user := os.Getenv("MAIL_USER")
+	if len(user) == 0 {
+		panic("mail user missing")
+	}
+
+	password := os.Getenv("MAIL_PASSWORD")
+	host := os.Getenv("MAIL_HOST")
+	serverAddr := os.Getenv("MAIL_SERVER_ADDR")
+
+	return Config{
+		userMail: user,
+		password: password,
+
+		host:       host,
+		serverAddr: serverAddr,
 	}
 }
 
