@@ -85,7 +85,7 @@ func main() {
 		config := getMailConfig()
 		em := NewSender(config)
 
-		err := em.SendEmail()
+		err := em.SendEmailNotification()
 		if err != nil {
 			c.JSON(500, err.Error())
 			return
