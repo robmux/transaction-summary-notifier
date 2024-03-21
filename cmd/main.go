@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/robmux/transaction-summary-notifier/pkg/configs"
+	"github.com/robmux/transaction-summary-notifier/pkg/domains/summary"
 	"github.com/robmux/transaction-summary-notifier/pkg/domains/transactions"
 	"github.com/robmux/transaction-summary-notifier/pkg/repositories"
 	"github.com/robmux/transaction-summary-notifier/pkg/services/rest"
@@ -15,7 +16,9 @@ func main() {
 	r := gin.Default()
 
 	transactionSrv := transactions.New()
-	handler := rest.New(transactionSrv)
+	summarySrv := summary.New(transactionSrv)
+
+	handler := rest.New(transactionSrv, summarySrv)
 
 	rest.MountRoutes(r, handler)
 

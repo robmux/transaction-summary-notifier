@@ -1,29 +1,31 @@
 package summary
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/shopspring/decimal"
+
+	"github.com/robmux/transaction-summary-notifier/pkg/domains/transactions"
 )
 
-type TransactionDetail struct {
-	ID   uint64
-	Date MonthDay
+type (
+	Srv struct {
+		transactionsLoader TransactionsLoader
+	}
 
-	TransactionAmount decimal.Decimal
+	TransactionsLoader interface {
+		LoadTransactions(ctx context.Context, userID uint64) ([]transactions.TransactionDetail, error)
+	}
+)
+
+func New(transactionsLoader TransactionsLoader) *Srv {
+	return &Srv{
+		transactionsLoader: transactionsLoader,
+	}
 }
 
-type MonthDay struct {
-	Month uint8
-	Day   uint8
-}
-
-type TransactionsByMonth struct {
-	Month                uint8
-	TransactionsQuantity uint64
-}
-
-func GetTotalBalanceInAccount(transactions []TransactionDetail) decimal.Decimal {
+func (s *Srv) GetTotalBalanceInAccount(ctx context.Context, transactions []transactions.TransactionDetail) decimal.Decimal {
 	totalBalance := decimal.NewFromFloat(0.0)
 
 	for i := 0; i < len(transactions); i++ {
@@ -33,7 +35,7 @@ func GetTotalBalanceInAccount(transactions []TransactionDetail) decimal.Decimal 
 	return totalBalance
 }
 
-func GetNumberOfTransactionsGroupedByMonth(transactions []TransactionDetail) map[uint8]TransactionsByMonth {
+func (s *Srv) GetNumberOfTransactionsGroupedByMonth(ctx context.Context, transactions []transactions.TransactionDetail) map[uint8]TransactionsByMonth {
 	byMonthMap := make(map[uint8]TransactionsByMonth, 12)
 	for _, transaction := range transactions {
 		monthData := byMonthMap[transaction.Date.Month]
@@ -45,27 +47,8 @@ func GetNumberOfTransactionsGroupedByMonth(transactions []TransactionDetail) map
 	return byMonthMap
 }
 
-type AverageByMonth struct {
-	Month   uint8
-	Average decimal.Decimal
-
-	TransactionType string
-}
-
-type avgData struct {
-	count    int64
-	totalSum decimal.Decimal
-
-	avg decimal.Decimal
-}
-
-type AveragesByMonth struct {
-	Debit  []AverageByMonth
-	Credit []AverageByMonth
-}
-
 // GetAverageCreditAndDebit does not include zeros in the avg
-func GetAverageCreditAndDebit(transactions []TransactionDetail) AveragesByMonth {
+func (s *Srv) GetAverageCreditAndDebit(ctx context.Context, transactions []transactions.TransactionDetail) AveragesByMonth {
 	byMonthMapDebit := make(map[uint8]AverageByMonth, 12)
 	byMonthMapCredit := make(map[uint8]AverageByMonth, 12)
 
@@ -117,12 +100,7 @@ func GetAverageCreditAndDebit(transactions []TransactionDetail) AveragesByMonth 
 	}
 }
 
-type AmountDetail struct {
-	Amount     decimal.Decimal
-	AmountType string
-}
-
-func GetAverageDebit(transactions []TransactionDetail) AmountDetail {
+func (s *Srv) GetAverageDebit(ctx context.Context, transactions []transactions.TransactionDetail) AmountDetail {
 	debitCounter := 0
 	total := decimal.NewFromFloat(0.0)
 	for _, transaction := range transactions {
@@ -145,7 +123,7 @@ func GetAverageDebit(transactions []TransactionDetail) AmountDetail {
 	return detail
 }
 
-func GetAverageCredit(transactions []TransactionDetail) AmountDetail {
+func (s *Srv) GetAverageCredit(ctx context.Context, transactions []transactions.TransactionDetail) AmountDetail {
 	debitCounter := 0
 	total := decimal.NewFromFloat(0.0)
 	for _, transaction := range transactions {

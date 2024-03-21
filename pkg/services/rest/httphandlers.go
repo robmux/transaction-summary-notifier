@@ -4,7 +4,9 @@ import (
 	"context"
 
 	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
 
+	"github.com/robmux/transaction-summary-notifier/pkg/domains/summary"
 	"github.com/robmux/transaction-summary-notifier/pkg/domains/transactions"
 )
 
@@ -12,15 +14,27 @@ type (
 	TransactionsManager interface {
 		LoadTransactions(ctx context.Context, userID uint64) ([]transactions.TransactionDetail, error)
 	}
+
+	SummaryService interface {
+		GetTotalBalanceInAccount(ctx context.Context, transactions []transactions.TransactionDetail) decimal.Decimal
+
+		GetNumberOfTransactionsGroupedByMonth(ctx context.Context, transactions []transactions.TransactionDetail) map[uint8]summary.TransactionsByMonth
+		GetAverageCreditAndDebit(ctx context.Context, transactions []transactions.TransactionDetail) summary.AveragesByMonth
+
+		GetAverageDebit(ctx context.Context, transactions []transactions.TransactionDetail) summary.AmountDetail
+		GetAverageCredit(ctx context.Context, transactions []transactions.TransactionDetail) summary.AmountDetail
+	}
 )
 
 type Handler struct {
 	TransactionsSrv TransactionsManager
+	SummarySrv      SummaryService
 }
 
-func New(txManager TransactionsManager) *Handler {
+func New(txManager TransactionsManager, summarySrv SummaryService) *Handler {
 	return &Handler{
 		TransactionsSrv: txManager,
+		SummarySrv:      summarySrv,
 	}
 }
 

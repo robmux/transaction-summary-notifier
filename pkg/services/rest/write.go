@@ -2,19 +2,20 @@ package rest
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/robmux/transaction-summary-notifier/pkg/domains/transactions"
 	"github.com/shopspring/decimal"
+
+	"github.com/robmux/transaction-summary-notifier/pkg/domains/transactions"
 )
 
 type (
-	TransactionDetail struct {
-		ID   uint64   `json:"id"`
-		Date MonthDay `json:"date"`
+	TransactionDetailDTO struct {
+		ID   uint64      `json:"id"`
+		Date MonthDayDTO `json:"date"`
 
 		TransactionAmount decimal.Decimal `json:"transaction_amount"`
 	}
 
-	MonthDay struct {
+	MonthDayDTO struct {
 		Month uint8 `json:"month"`
 		Day   uint8 `json:"day"`
 	}
@@ -31,12 +32,12 @@ func (h *Handler) loadTransactions(c *gin.Context) error {
 	return nil
 }
 
-func toDTO(transactions []transactions.TransactionDetail) []TransactionDetail {
-	transactionsDTO := make([]TransactionDetail, 0, len(transactions))
+func toDTO(transactions []transactions.TransactionDetail) []TransactionDetailDTO {
+	transactionsDTO := make([]TransactionDetailDTO, 0, len(transactions))
 	for _, transaction := range transactions {
-		transactionsDTO = append(transactionsDTO, TransactionDetail{
+		transactionsDTO = append(transactionsDTO, TransactionDetailDTO{
 			ID: transaction.ID,
-			Date: MonthDay{
+			Date: MonthDayDTO{
 				Month: transaction.Date.Month,
 				Day:   transaction.Date.Day,
 			},
