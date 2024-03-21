@@ -25,11 +25,34 @@ func New(transactionsLoader TransactionsLoader) *Srv {
 	}
 }
 
+func (s *Srv) GetSummary(ctx context.Context) (*GeneralSummary, error) {
+	details, err := s.transactionsLoader.LoadTransactions(ctx, 1)
+	if err != nil {
+		return nil, err
+	}
+
+	totalBalance := s.GetTotalBalanceInAccount(ctx, details)
+
+	balanceType := "Debit"
+	if totalBalance.IsPositive() {
+		balanceType = "Credit"
+	}
+	if totalBalance.IsZero() {
+		balanceType = ""
+	}
+
+	summary := GeneralSummary{TotalBalance: AmountDetail{
+		Amount:     totalBalance,
+		AmountType: balanceType,
+	}}
+	return &summary, nil
+}
+
 func (s *Srv) GetTotalBalanceInAccount(ctx context.Context, transactions []transactions.TransactionDetail) decimal.Decimal {
 	totalBalance := decimal.NewFromFloat(0.0)
 
 	for i := 0; i < len(transactions); i++ {
-		totalBalance.Add(transactions[i].TransactionAmount)
+		totalBalance = totalBalance.Add(transactions[i].TransactionAmount)
 	}
 
 	return totalBalance

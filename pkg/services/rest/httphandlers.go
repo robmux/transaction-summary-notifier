@@ -16,6 +16,8 @@ type (
 	}
 
 	SummaryService interface {
+		GetSummary(ctx context.Context) (*summary.GeneralSummary, error)
+
 		GetTotalBalanceInAccount(ctx context.Context, transactions []transactions.TransactionDetail) decimal.Decimal
 
 		GetNumberOfTransactionsGroupedByMonth(ctx context.Context, transactions []transactions.TransactionDetail) map[uint8]summary.TransactionsByMonth
@@ -36,16 +38,6 @@ func New(txManager TransactionsManager, summarySrv SummaryService) *Handler {
 		TransactionsSrv: txManager,
 		SummarySrv:      summarySrv,
 	}
-}
-
-func MountRoutes(r *gin.Engine, handler *Handler) {
-	// Read
-	r.GET("/ping", makeHTTPHandler(handler.Ping))
-
-	// Write
-
-	r.POST("/load-transactions", makeHTTPHandler(handler.loadTransactions))
-
 }
 
 func (h *Handler) Ping(ctx *gin.Context) error {

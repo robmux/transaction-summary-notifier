@@ -30,3 +30,7 @@ type TransactionsByMonth struct {
 	Month                uint8
 	TransactionsQuantity uint64
 }
+
+type GeneralSummary struct {
+	TotalBalance AmountDetail
+}
