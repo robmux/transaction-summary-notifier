@@ -34,7 +34,7 @@ func GetMailConfig() repositories.Config {
 		panic("server address is empty")
 	}
 
-	serverPortStr := os.Getenv("SERVER_PORT")
+	serverPortStr := os.Getenv("MAIL_SERVER_PORT")
 	serverPort, err := strconv.ParseInt(serverPortStr, 10, 64)
 	if err != nil {
 		panic(err.Error())

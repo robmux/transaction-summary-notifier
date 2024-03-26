@@ -19,36 +19,60 @@ type (
 	}
 )
 
+const (
+	DebitBalance  = "Debit"
+	CreditBalance = "Credit"
+)
+
 func New(transactionsLoader TransactionsLoader) *Srv {
 	return &Srv{
 		transactionsLoader: transactionsLoader,
 	}
 }
 
-func (s *Srv) GetSummary(ctx context.Context) (*GeneralSummary, error) {
-	details, err := s.transactionsLoader.LoadTransactions(ctx, 1)
+func (s *Srv) GetSummary(ctx context.Context, userID uint64) (*GeneralSummary, error) {
+	details, err := s.transactionsLoader.LoadTransactions(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	totalBalance := s.GetTotalBalanceInAccount(ctx, details)
 
-	balanceType := "Debit"
+	balanceType := DebitBalance
 	if totalBalance.IsPositive() {
-		balanceType = "Credit"
+		balanceType = CreditBalance
 	}
 	if totalBalance.IsZero() {
 		balanceType = ""
 	}
 
-	summary := GeneralSummary{TotalBalance: AmountDetail{
-		Amount:     totalBalance,
-		AmountType: balanceType,
-	}}
+	numTxsByMonthMap := s.GetNumberOfTransactionsGroupedByMonth(ctx, details)
+	numTxByMonth := make([]TransactionsByMonth, 0, len(numTxsByMonthMap))
+	for _, month := range numTxsByMonthMap {
+		numTxByMonth = append(numTxByMonth, month)
+	}
+
+	averagesByMonth := s.GetAverageCreditAndDebit(ctx, details)
+
+	avgDebit := s.GetAverageDebit(ctx, details)
+	avgCredit := s.GetAverageCredit(ctx, details)
+
+	summary := GeneralSummary{
+		TotalBalance: AmountDetail{
+			Amount:     totalBalance,
+			AmountType: balanceType,
+		},
+		NumberTransactionsByMonth: numTxByMonth,
+		AveragesByMonth:           averagesByMonth,
+		AverageCredit:             avgDebit,
+		AverageDebit:              avgCredit,
+	}
 	return &summary, nil
 }
 
-func (s *Srv) GetTotalBalanceInAccount(ctx context.Context, transactions []transactions.TransactionDetail) decimal.Decimal {
+func (s *Srv) GetTotalBalanceInAccount(
+	ctx context.Context,
+	transactions []transactions.TransactionDetail) decimal.Decimal {
 	totalBalance := decimal.NewFromFloat(0.0)
 
 	for i := 0; i < len(transactions); i++ {
@@ -58,10 +82,16 @@ func (s *Srv) GetTotalBalanceInAccount(ctx context.Context, transactions []trans
 	return totalBalance
 }
 
-func (s *Srv) GetNumberOfTransactionsGroupedByMonth(ctx context.Context, transactions []transactions.TransactionDetail) map[uint8]TransactionsByMonth {
+func (s *Srv) GetNumberOfTransactionsGroupedByMonth(
+	ctx context.Context,
+	transactions []transactions.TransactionDetail) map[uint8]TransactionsByMonth {
 	byMonthMap := make(map[uint8]TransactionsByMonth, 12)
 	for _, transaction := range transactions {
+		// Get the value and if it's not present then the default is returned
 		monthData := byMonthMap[transaction.Date.Month]
+
+		// Make sure to add the month in case it was the first time and the default value was returned
+		monthData.Month = transaction.Date.Month
 		monthData.TransactionsQuantity += uint64(1)
 
 		byMonthMap[transaction.Date.Month] = monthData
@@ -71,59 +101,54 @@ func (s *Srv) GetNumberOfTransactionsGroupedByMonth(ctx context.Context, transac
 }
 
 // GetAverageCreditAndDebit does not include zeros in the avg
-func (s *Srv) GetAverageCreditAndDebit(ctx context.Context, transactions []transactions.TransactionDetail) AveragesByMonth {
-	byMonthMapDebit := make(map[uint8]AverageByMonth, 12)
-	byMonthMapCredit := make(map[uint8]AverageByMonth, 12)
+func (s *Srv) GetAverageCreditAndDebit(
+	ctx context.Context,
+	transactions []transactions.TransactionDetail) AveragesByMonth {
+	// Create map to keep the average
+	byMonthMap := make(map[uint8]AverageByMonth, 12)
 
-	avgByMonthAndType := make(map[string]avgData)
-	credit := "Credit"
-	debit := "Debit"
+	avgByMonth := make(map[string]avgData)
 	for idx := range transactions {
-		avgType := debit
-		if transactions[idx].TransactionAmount.IsPositive() {
-			avgType = credit
-		}
+		avgType := DebitBalance
 
-		avgKey := fmt.Sprintf("%d_type_%s", transactions[idx].Date.Month, avgType)
+		avgKey := fmt.Sprintf("%d", transactions[idx].Date.Month)
 
-		avg := avgByMonthAndType[avgKey]
+		avg := avgByMonth[avgKey]
 		avg.count++
 		avg.totalSum = avg.totalSum.Add(transactions[idx].TransactionAmount)
 
 		// Update average
 		avg.avg = avg.totalSum.Div(decimal.NewFromInt(avg.count))
-		// update the map
-		avgByMonthAndType[avgKey] = avg
-
-		// update result
-		if avgType == credit {
-			byMonth := byMonthMapCredit[transactions[idx].Date.Month]
-			byMonth.Average = avg.avg
-			byMonth.TransactionType = credit
-			byMonthMapCredit[transactions[idx].Date.Month] = byMonth
-			continue
+		if avg.avg.IsPositive() {
+			avgType = CreditBalance
+		}
+		if avg.avg.IsZero() {
+			avgType = ""
 		}
 
-		byMonth := byMonthMapDebit[transactions[idx].Date.Month]
-		byMonth.Average = avg.avg
-		byMonth.TransactionType = debit
-		byMonthMapDebit[transactions[idx].Date.Month] = byMonth
+		// update the map
+		avgByMonth[avgKey] = avg
 
+		byMonth := byMonthMap[transactions[idx].Date.Month]
+		byMonth.Month = transactions[idx].Date.Month
+		byMonth.Average = avg.avg
+		byMonth.TransactionType = avgType
+		byMonthMap[transactions[idx].Date.Month] = byMonth
 	}
 
-	debitMonths := make([]AverageByMonth, 0, len(byMonthMapDebit))
-	creditMonths := make([]AverageByMonth, 0, len(byMonthMapCredit))
-
-	debitMonths = makeSliceFromMap(byMonthMapDebit, debitMonths)
-	creditMonths = makeSliceFromMap(byMonthMapCredit, creditMonths)
+	monthsData := make([]AverageByMonth, 0, len(byMonthMap))
+	for _, month := range byMonthMap {
+		monthsData = append(monthsData, month)
+	}
 
 	return AveragesByMonth{
-		Debit:  debitMonths,
-		Credit: creditMonths,
+		AvgsByMonth: monthsData,
 	}
 }
 
-func (s *Srv) GetAverageDebit(ctx context.Context, transactions []transactions.TransactionDetail) AmountDetail {
+func (s *Srv) GetAverageDebit(
+	ctx context.Context,
+	transactions []transactions.TransactionDetail) AmountDetail {
 	debitCounter := 0
 	total := decimal.NewFromFloat(0.0)
 	for _, transaction := range transactions {
@@ -134,7 +159,7 @@ func (s *Srv) GetAverageDebit(ctx context.Context, transactions []transactions.T
 	}
 
 	detail := AmountDetail{
-		AmountType: "Debit",
+		AmountType: DebitBalance,
 		Amount:     decimal.NewFromFloat(0.0),
 	}
 
@@ -146,7 +171,9 @@ func (s *Srv) GetAverageDebit(ctx context.Context, transactions []transactions.T
 	return detail
 }
 
-func (s *Srv) GetAverageCredit(ctx context.Context, transactions []transactions.TransactionDetail) AmountDetail {
+func (s *Srv) GetAverageCredit(
+	ctx context.Context,
+	transactions []transactions.TransactionDetail) AmountDetail {
 	debitCounter := 0
 	total := decimal.NewFromFloat(0.0)
 	for _, transaction := range transactions {

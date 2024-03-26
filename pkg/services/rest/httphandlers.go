@@ -16,7 +16,7 @@ type (
 	}
 
 	SummaryService interface {
-		GetSummary(ctx context.Context) (*summary.GeneralSummary, error)
+		GetSummary(ctx context.Context, userID uint64) (*summary.GeneralSummary, error)
 
 		GetTotalBalanceInAccount(ctx context.Context, transactions []transactions.TransactionDetail) decimal.Decimal
 

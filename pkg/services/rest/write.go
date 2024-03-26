@@ -4,7 +4,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 
+	"github.com/robmux/transaction-summary-notifier/pkg/configs"
 	"github.com/robmux/transaction-summary-notifier/pkg/domains/transactions"
+	"github.com/robmux/transaction-summary-notifier/pkg/repositories"
 )
 
 type (
@@ -46,4 +48,17 @@ func toDTO(transactions []transactions.TransactionDetail) []TransactionDetailDTO
 	}
 
 	return transactionsDTO
+}
+
+func (h *Handler) SendMails(c *gin.Context) error {
+	config := configs.GetMailConfig()
+	em := repositories.NewSender(config)
+
+	err := em.SendEmailNotification()
+	if err != nil {
+		return err
+	}
+
+	c.String(200, "success")
+	return nil
 }

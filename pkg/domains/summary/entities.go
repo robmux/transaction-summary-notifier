@@ -22,8 +22,7 @@ type avgData struct {
 }
 
 type AveragesByMonth struct {
-	Debit  []AverageByMonth
-	Credit []AverageByMonth
+	AvgsByMonth []AverageByMonth
 }
 
 type TransactionsByMonth struct {
@@ -33,4 +32,10 @@ type TransactionsByMonth struct {
 
 type GeneralSummary struct {
 	TotalBalance AmountDetail
+
+	NumberTransactionsByMonth []TransactionsByMonth
+	AveragesByMonth           AveragesByMonth
+
+	AverageCredit AmountDetail
+	AverageDebit  AmountDetail
 }
